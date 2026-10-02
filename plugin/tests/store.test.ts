@@ -77,3 +77,14 @@ test("markStale: без изменений → не stale", async () => {
 	await s.markStale({ История: { "a.md": 1 } });
 	expect(s.getDeck("История")!.stale).toBe(false);
 });
+
+test("markStale: stale персистится в decks.json", async () => {
+	const s = new DeckStore(tmp);
+	await s.load();
+	await s.saveDeck({ ...DECK, notes: { "a.md": 1 } });
+	await s.markStale({ История: { "a.md": 2 } });
+	const s2 = new DeckStore(tmp);
+	await s2.load();
+	expect(s2.getDeck("История")!.stale).toBe(true);
+	expect(existsSync(join(tmp, ".obsidian-check/decks.json.tmp"))).toBe(false);
+});

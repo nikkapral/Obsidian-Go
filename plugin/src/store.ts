@@ -34,6 +34,10 @@ export class DeckStore {
 
 	async saveDeck(deck: Deck): Promise<void> {
 		this.decks.set(deck.path, deck);
+		await this.persist();
+	}
+
+	private async persist(): Promise<void> {
 		await mkdir(join(this.vaultDir, STORE_DIR), { recursive: true });
 		const tmp = `${this.file}.tmp`;
 		await writeFile(tmp, JSON.stringify({ decks: this.getDecks() }), "utf8");
@@ -41,6 +45,7 @@ export class DeckStore {
 	}
 
 	async markStale(currentMtimes: Record<string, Record<string, number>>): Promise<void> {
+		let changed = false;
 		for (const [path, mtimes] of Object.entries(currentMtimes)) {
 			const deck = this.decks.get(path);
 			if (!deck) continue; // колоды нет в снапшоте — не трогаем
@@ -48,8 +53,12 @@ export class DeckStore {
 			const known = deck.notes;
 			const sameSet =
 				current.length === Object.keys(known).length && current.every((k) => k in known);
-			const changed = !sameSet || current.some((k) => mtimes[k] !== known[k]);
-			if (changed) deck.stale = true;
+			const stale = !sameSet || current.some((k) => mtimes[k] !== known[k]);
+			if (stale && !deck.stale) {
+				deck.stale = true;
+				changed = true;
+			}
 		}
+		if (changed) await this.persist();
 	}
 }

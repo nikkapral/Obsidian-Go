@@ -1,11 +1,10 @@
 import type http from "node:http";
-import { FileSystemAdapter, Notice, Plugin } from "obsidian";
-import { generateForNote } from "./generator";
+import { FileSystemAdapter, Notice, Plugin, type TAbstractFile } from "obsidian";
+import { collectCards, generateForNote } from "./generator";
 import { DEFAULT_SETTINGS, type PluginSettings } from "./settings";
 import { ObsidianCheckSettingTab } from "./settings-tab";
 import { startServer } from "./server";
 import { DeckStore } from "./store";
-import type { Card } from "./types";
 
 export default class ObsidianCheckPlugin extends Plugin {
 	settings: PluginSettings = { ...DEFAULT_SETTINGS };
@@ -23,6 +22,19 @@ export default class ObsidianCheckPlugin extends Plugin {
 		}
 		this.store = new DeckStore(basePath);
 		await this.store.load();
+		await this.store.markStale(this.collectMtimes());
+
+		const onVaultEvent = (file: TAbstractFile, oldPath?: string) => {
+			const tracked = (p: string) =>
+				this.settings.trackedPaths.some((path) => p === path || p.startsWith(`${path}/`));
+			if (tracked(file.path) || (oldPath !== undefined && tracked(oldPath))) {
+				void this.store.markStale(this.collectMtimes());
+			}
+		};
+		this.registerEvent(this.app.vault.on("modify", onVaultEvent));
+		this.registerEvent(this.app.vault.on("create", onVaultEvent));
+		this.registerEvent(this.app.vault.on("delete", onVaultEvent));
+		this.registerEvent(this.app.vault.on("rename", onVaultEvent));
 
 		this.server = startServer({
 			port: this.settings.port,
@@ -41,7 +53,7 @@ export default class ObsidianCheckPlugin extends Plugin {
 					new Notice(`Obsidian Check: колоды обновлены (${this.settings.trackedPaths.length})`);
 				} catch (error) {
 					console.error("Obsidian Check: ошибка генерации", error);
-					new Notice("Obsidian Check: ошибка генерации, см. консоль");
+					new Notice("Obsidian Check: ошибка генерации (Kimi), кеш не изменён");
 				}
 			},
 		});
@@ -58,17 +70,22 @@ export default class ObsidianCheckPlugin extends Plugin {
 			.getMarkdownFiles()
 			.filter((file) => file.path === path || file.path.startsWith(`${path}/`));
 
-		const cards: Card[] = [];
+		const inputs = [];
 		const notes: Record<string, number> = {};
 		for (const file of files) {
-			const content = await this.app.vault.cachedRead(file);
-			const generated = await generateForNote(this.settings, {
+			inputs.push({
 				title: file.basename,
 				path: file.path,
-				content,
+				content: await this.app.vault.cachedRead(file),
 			});
-			cards.push(...generated);
 			notes[file.path] = file.stat.mtime;
+		}
+
+		const { cards, failed } = await collectCards(inputs, (note) =>
+			generateForNote(this.settings, note),
+		);
+		if (failed.length > 0) {
+			throw new Error(`Ошибка генерации (Kimi) для: ${failed.join(", ")}`);
 		}
 
 		await this.store.saveDeck({
@@ -78,6 +95,21 @@ export default class ObsidianCheckPlugin extends Plugin {
 			notes,
 			cards,
 		});
+	}
+
+	private collectMtimes(): Record<string, Record<string, number>> {
+		const files = this.app.vault.getMarkdownFiles();
+		const result: Record<string, Record<string, number>> = {};
+		for (const path of this.settings.trackedPaths) {
+			const mtimes: Record<string, number> = {};
+			for (const file of files) {
+				if (file.path === path || file.path.startsWith(`${path}/`)) {
+					mtimes[file.path] = file.stat.mtime;
+				}
+			}
+			result[path] = mtimes;
+		}
+		return result;
 	}
 
 	async loadSettings(): Promise<void> {

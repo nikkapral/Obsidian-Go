@@ -36,11 +36,11 @@ test("ретрай → валидные карточки возвращены", 
 	expect(cards[0].statement).toBe("1812 — война");
 });
 
-test("двойной провал → пустой массив", async () => {
+test("двойной провал → бросает ошибку", async () => {
 	const chat = async () => {
 		throw new Error("bad");
 	};
-	expect(await generateForNote(SETTINGS, note, chat)).toEqual([]);
+	await expect(generateForNote(SETTINGS, note, chat)).rejects.toThrow("bad");
 });
 
 test("пустая заметка → без вызова API", async () => {
