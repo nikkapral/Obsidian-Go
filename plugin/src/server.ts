@@ -16,6 +16,9 @@ export function startServer(opts: {
 		void handle(req, res).catch(() => sendJson(res, 500, { error: "internal error" }));
 	});
 	server.listen(opts.port);
+	server.on("error", (err) => {
+		console.error(`obsidian-check: HTTP server error: ${err.message}`);
+	});
 
 	async function handle(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
 		const url = new URL(req.url ?? "/", "http://localhost");

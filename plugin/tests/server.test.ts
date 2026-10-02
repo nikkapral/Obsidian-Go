@@ -3,7 +3,7 @@ import type { AddressInfo } from "node:net";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { startServer } from "../src/server";
 import { DeckStore } from "../src/store";
 import type { Deck } from "../src/types";
@@ -104,4 +104,22 @@ test("POST regenerate для несуществующей колоды → 404, 
 test("неизвестный путь → 404", async () => {
 	const res = await fetch(`${base}/unknown`);
 	expect(res.status).toBe(404);
+});
+
+test("занятый порт → ошибка в обработчике, без uncaught exception", async () => {
+	const port = (server.address() as AddressInfo).port;
+	const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+	let second: Server | undefined;
+	try {
+		second = startServer({ port, store, regenerate: async () => {} });
+		const err = await new Promise<NodeJS.ErrnoException>((resolve, reject) => {
+			second!.once("error", resolve);
+			setTimeout(() => reject(new Error("нет события error за 2с")), 2000);
+		});
+		expect(err.code).toBe("EADDRINUSE");
+		expect(spy).toHaveBeenCalledWith(expect.stringContaining("EADDRINUSE"));
+	} finally {
+		spy.mockRestore();
+		second?.close();
+	}
 });
