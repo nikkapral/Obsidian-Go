@@ -1,0 +1,9 @@
+{
+	"id": "obsidian-check",
+	"name": "Obsidian Check",
+	"version": "0.1.0",
+	"minAppVersion": "1.5.0",
+	"description": "Генерация карточек-викторины по заметкам через Kimi API, отдача по локальному HTTP",
+	"author": "",
+	"isDesktopOnly": true
+}
