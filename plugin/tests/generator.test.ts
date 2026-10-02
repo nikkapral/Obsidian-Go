@@ -16,10 +16,24 @@ test("возвращает карточки из ответа API", async () => 
 });
 
 test("ретрай при невалидном JSON, затем успех", async () => {
+	const prompts: string[] = [];
+	const chat = async (_settings: unknown, prompt: string) => {
+		prompts.push(prompt);
+		return prompts.length === 1 ? "мусор" : "[]";
+	};
+	await generateForNote(SETTINGS, note, chat as never);
+	expect(prompts).toHaveLength(2);
+	expect(prompts[1]).toContain(note.content);
+	expect(prompts[1]).toContain("Верни только валидный JSON без пояснений");
+});
+
+test("ретрай → валидные карточки возвращены", async () => {
 	let calls = 0;
-	const chat = async () => (++calls === 1 ? "мусор" : "[]");
-	await generateForNote(SETTINGS, note, chat);
-	expect(calls).toBe(2);
+	const chat = async () =>
+		++calls === 1 ? "мусор" : '[{"statement":"1812 — война","isTrue":true}]';
+	const cards = await generateForNote(SETTINGS, note, chat);
+	expect(cards).toHaveLength(1);
+	expect(cards[0].statement).toBe("1812 — война");
 });
 
 test("двойной провал → пустой массив", async () => {

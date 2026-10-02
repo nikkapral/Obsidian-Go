@@ -2,7 +2,7 @@ import { chatCompletion, parseCards } from "./kimi";
 import type { PluginSettings } from "./settings";
 import type { Card } from "./types";
 
-const RETRY_PROMPT = "Верни только валидный JSON без пояснений";
+const RETRY_PROMPT = "Верни только валидный JSON без пояснений.";
 
 export function buildPrompt(note: { title: string; content: string }): string {
 	return [
@@ -22,12 +22,13 @@ export async function generateForNote(
 	if (!note.content.trim()) {
 		return [];
 	}
-	for (const prompt of [buildPrompt(note), RETRY_PROMPT]) {
+	const prompt = buildPrompt(note);
+	for (const current of [prompt, `${prompt}\n\n${RETRY_PROMPT}`]) {
 		try {
-			const raw = await chat(settings, prompt);
+			const raw = await chat(settings, current);
 			return parseCards(raw, note);
 		} catch (error) {
-			if (prompt === RETRY_PROMPT) {
+			if (current !== prompt) {
 				console.warn(`Не удалось сгенерировать карточки для ${note.path}:`, error);
 				return [];
 			}
