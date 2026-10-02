@@ -8,6 +8,7 @@ interface Props {
 
 export default function SettingsScreen({ onSaved }: Props) {
   const [value, setValue] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     getBaseUrl().then((saved) => {
@@ -17,9 +18,14 @@ export default function SettingsScreen({ onSaved }: Props) {
 
   const save = async () => {
     const url = value.trim();
-    if (!url) return;
-    await setBaseUrl(url);
-    onSaved(url);
+    if (!url) {
+      setError('Введите адрес, например 192.168.1.5:27124');
+      return;
+    }
+    setError(null);
+    const normalized = /^https?:\/\//.test(url) ? url : `http://${url}`;
+    await setBaseUrl(normalized);
+    onSaved(normalized);
   };
 
   return (
@@ -35,6 +41,7 @@ export default function SettingsScreen({ onSaved }: Props) {
         autoCorrect={false}
         keyboardType="url"
       />
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
       <TouchableOpacity style={styles.button} onPress={save}>
         <Text style={styles.buttonText}>Сохранить</Text>
       </TouchableOpacity>
@@ -66,6 +73,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
+    marginBottom: 16,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#c0392b',
     marginBottom: 16,
   },
   button: {

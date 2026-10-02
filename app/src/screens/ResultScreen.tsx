@@ -26,6 +26,9 @@ export default function ResultScreen({ score, total, mistakes, onBackToDecks }: 
         renderItem={({ item }) => (
           <View style={styles.mistake}>
             <Text style={styles.statement}>{item.statement}</Text>
+            <Text style={styles.answer}>
+              На самом деле: {item.isTrue ? 'верно' : 'неверно'}
+            </Text>
             <Text style={styles.note}>Источник: {item.note}</Text>
           </View>
         )}
@@ -70,6 +73,11 @@ const styles = StyleSheet.create({
   },
   statement: {
     fontSize: 15,
+  },
+  answer: {
+    fontSize: 14,
+    color: '#2f6fed',
+    marginTop: 4,
   },
   note: {
     fontSize: 13,

@@ -20,6 +20,7 @@ export default function DeckListScreen({ baseUrl, onOpenDeck, onOpenSettings }: 
   const [decks, setDecks] = useState<DeckSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [openError, setOpenError] = useState<string | null>(null);
   const [openingPath, setOpeningPath] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -28,6 +29,7 @@ export default function DeckListScreen({ baseUrl, onOpenDeck, onOpenSettings }: 
     try {
       const list = await fetchDecks(baseUrl);
       setDecks(list);
+      setOpenError(null);
     } catch {
       setError('Obsidian недоступен: проверьте IP и что Obsidian запущен');
     } finally {
@@ -42,11 +44,12 @@ export default function DeckListScreen({ baseUrl, onOpenDeck, onOpenSettings }: 
   const openDeck = async (deck: DeckSummary) => {
     if (deck.cardCount === 0 || openingPath) return;
     setOpeningPath(deck.path);
+    setOpenError(null);
     try {
       const cards = await fetchDeck(baseUrl, deck.path);
       onOpenDeck(deck, cards);
     } catch {
-      setError('Obsidian недоступен: проверьте IP и что Obsidian запущен');
+      setOpenError('Не удалось загрузить колоду: Obsidian недоступен');
     } finally {
       setOpeningPath(null);
     }
@@ -82,6 +85,7 @@ export default function DeckListScreen({ baseUrl, onOpenDeck, onOpenSettings }: 
           <Text style={styles.linkText}>Настройки</Text>
         </TouchableOpacity>
       </View>
+      {openError ? <Text style={styles.openErrorText}>{openError}</Text> : null}
       <FlatList
         data={decks}
         keyExtractor={(item) => item.path}
@@ -169,6 +173,11 @@ const styles = StyleSheet.create({
     color: '#c0392b',
     textAlign: 'center',
     marginBottom: 16,
+  },
+  openErrorText: {
+    fontSize: 14,
+    color: '#c0392b',
+    marginBottom: 12,
   },
   button: {
     backgroundColor: '#2f6fed',
