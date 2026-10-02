@@ -15,13 +15,12 @@ export class DeckStore {
 
 	async load(): Promise<void> {
 		this.decks.clear();
-		let raw: string;
+		let data: { decks?: Deck[] };
 		try {
-			raw = await readFile(this.file, "utf8");
+			data = JSON.parse(await readFile(this.file, "utf8"));
 		} catch {
-			return; // нет файла → пустое состояние
+			return; // нет файла или битый JSON → пустое состояние
 		}
-		const data = JSON.parse(raw) as { decks?: Deck[] };
 		for (const deck of data.decks ?? []) this.decks.set(deck.path, deck);
 	}
 

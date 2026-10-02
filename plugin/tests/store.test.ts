@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
@@ -52,6 +52,14 @@ test("saveDeck + getDeck round-trip и атомарность (нет .tmp по�
 	await s2.load();
 	expect(s2.getDeck("История")!.cards).toEqual(DECK.cards);
 	expect(existsSync(join(tmp, ".obsidian-check/decks.json.tmp"))).toBe(false);
+});
+
+test("битый decks.json → пустое состояние без ошибки", async () => {
+	mkdirSync(join(tmp, ".obsidian-check"), { recursive: true });
+	writeFileSync(join(tmp, ".obsidian-check/decks.json"), "не json", "utf8");
+	const s = new DeckStore(tmp);
+	await s.load();
+	expect(s.getDecks()).toEqual([]);
 });
 
 test("markStale: изменённый mtime → stale", async () => {
