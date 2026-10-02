@@ -11,6 +11,7 @@
 		"esModuleInterop": true,
 		"strict": true,
 		"lib": ["ES2018", "DOM"],
+		"skipLibCheck": true,
 		"types": ["node"]
 	},
 	"include": ["src/**/*.ts"]
